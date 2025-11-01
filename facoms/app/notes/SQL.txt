@@ -1,0 +1,100 @@
+-- File: schema.sql
+-- Users: department_head and faculty stored in same table with role column
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  email VARCHAR(150),
+  username VARCHAR(100) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL, -- plaintext per request (WARNING: insecure)
+  role ENUM('department_head','faculty') NOT NULL,
+  photo VARCHAR(255) DEFAULT NULL,
+  password_request TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE rooms (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  building VARCHAR(100),
+  room_number VARCHAR(50),
+  capacity INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE schedules (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  academic_period VARCHAR(100),
+  course_code VARCHAR(50),
+  course_title VARCHAR(255),
+  room_id INT NOT NULL,
+  time_start TIME NOT NULL,
+  time_end TIME NOT NULL,
+  day ENUM('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday') NOT NULL,
+  program VARCHAR(50),
+  year_level VARCHAR(50),
+  section VARCHAR(50),
+  faculty_id INT NOT NULL,
+  status ENUM('Upcoming','Occupied','Class Done','Cancelled','Missed') DEFAULT 'Upcoming',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+  FOREIGN KEY (faculty_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE reservations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  schedule_id INT NULL,
+  room_id INT NOT NULL,
+  faculty_id INT NOT NULL,
+  date DATE NOT NULL,
+  time_start TIME NOT NULL,
+  time_end TIME NOT NULL,
+  reason TEXT,
+  status ENUM('Waiting','Approved','Declined','Reserved','Cancelled') DEFAULT 'Waiting',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (room_id) REFERENCES rooms(id),
+  FOREIGN KEY (faculty_id) REFERENCES users(id),
+  FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE SET NULL
+);
+
+CREATE TABLE leaves (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  faculty_id INT NOT NULL,
+  leave_type VARCHAR(100),
+  reason TEXT,
+  start_date DATE,
+  end_date DATE,
+  status ENUM('Pending','Approved','Declined') DEFAULT 'Pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (faculty_id) REFERENCES users(id)
+);
+
+CREATE TABLE notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(255),
+  message TEXT,
+  link VARCHAR(255) DEFAULT NULL,
+  is_read TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE qrcodes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  room_id INT NOT NULL,
+  qr_value VARCHAR(255) NOT NULL, -- could be room UUID or signed token
+  file_path VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (room_id) REFERENCES rooms(id)
+);
+
+CREATE TABLE attendance_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  schedule_id INT,
+  faculty_id INT,
+  action ENUM('Start','End') NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  details TEXT,
+  FOREIGN KEY (schedule_id) REFERENCES schedules(id),
+  FOREIGN KEY (faculty_id) REFERENCES users(id)
+);
